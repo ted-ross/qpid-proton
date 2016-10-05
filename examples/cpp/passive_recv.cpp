@@ -26,6 +26,7 @@
 #include <proton/delivery.hpp>
 #include <proton/messaging_handler.hpp>
 #include <proton/link.hpp>
+#include <proton/receiver_options.hpp>
 #include <proton/message_id.hpp>
 #include <proton/value.hpp>
 
@@ -41,14 +42,19 @@ class simple_recv : public proton::messaging_handler {
     proton::receiver   receiver;
     uint64_t expected;
     uint64_t received;
+    int      capacity;
 
   public:
-    simple_recv(const std::string &s, int c) :
-        url(s), expected(c), received(0) {}
+    simple_recv(const std::string &s, int c, int flow) :
+        url(s), expected(c), received(0), capacity(flow) {}
 
     void on_container_start(proton::container &c) OVERRIDE {
         connection = c.connect(url);
         std::cout << "simple_recv listening on " << url << std::endl;
+    }
+
+    void on_receiver_open(proton::receiver &l) OVERRIDE {
+        l.open(proton::receiver_options().credit_window(capacity));
     }
 
     void on_message(proton::delivery &d, proton::message &msg) OVERRIDE {
@@ -72,17 +78,19 @@ int main(int argc, char **argv) {
     std::string address("127.0.0.1:5672/examples");
 
     int message_count = 100;
+    int capacity      = 10;
     example::options opts(argc, argv);
     std::string container_id("passive_recv");
 
     opts.add_value(address, 'a', "address", "connect to and receive from URL", "URL");
     opts.add_value(message_count, 'm', "messages", "receive COUNT messages", "COUNT");
     opts.add_value(container_id, 'c', "container", "container id", "ID");
+    opts.add_value(capacity, 'f', "flow", "credit capacity", "CREDITS");
 
     try {
         opts.parse();
 
-        simple_recv recv(address, message_count);
+        simple_recv recv(address, message_count, capacity);
         proton::default_container(recv, container_id).run();
 
         return 0;

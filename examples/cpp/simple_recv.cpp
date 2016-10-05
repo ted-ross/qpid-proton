@@ -43,16 +43,18 @@ class simple_recv : public proton::messaging_handler {
     int expected;
     int received;
     bool quiet;
+    int capacity;
 
   public:
-    simple_recv(const std::string &s, const std::string &u, const std::string &p, int c, bool q) :
-        url(s), user(u), password(p), expected(c), received(0), quiet(q) {}
+    simple_recv(const std::string &s, const std::string &u, const std::string &p, int c, bool q, int f) :
+        url(s), user(u), password(p), expected(c), received(0), quiet(q), capacity(f) {}
 
     void on_container_start(proton::container &c) OVERRIDE {
         proton::connection_options co;
+        proton::receiver_options ro;
         if (!user.empty()) co.user(user);
         if (!password.empty()) co.password(password);
-        receiver = c.open_receiver(url, co);
+        receiver = c.open_receiver(url, ro.credit_window(capacity), co);
         if (!quiet)
             std::cout << "simple_recv listening on " << url << std::endl;
     }
@@ -80,6 +82,7 @@ int main(int argc, char **argv) {
     std::string user;
     std::string password;
     int message_count = 100;
+    int capacity      = 10;
     bool quiet = false;
     example::options opts(argc, argv);
 
@@ -88,12 +91,13 @@ int main(int argc, char **argv) {
     opts.add_value(user, 'u', "user", "authenticate as USER", "USER");
     opts.add_value(password, 'p', "password", "authenticate with PASSWORD", "PASSWORD");
     opts.add_flag(quiet, 'q', "quiet", "Suppress output during run");
+    opts.add_value(capacity, 'f', "flow", "credit capacity", "CREDITS");
 
 
     try {
         opts.parse();
 
-        simple_recv recv(address, user, password, message_count, quiet);
+        simple_recv recv(address, user, password, message_count, quiet, capacity);
         proton::default_container(recv).run();
 
         return 0;
