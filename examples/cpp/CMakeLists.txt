@@ -40,6 +40,7 @@ foreach(example
     helloworld
     helloworld_direct
     simple_recv
+    passive_recv
     simple_send
     scheduled_send_03
     direct_recv
