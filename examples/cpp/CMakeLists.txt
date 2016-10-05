@@ -42,6 +42,7 @@ foreach(example
     simple_recv
     passive_recv
     simple_send
+    fast_send
     scheduled_send_03
     direct_recv
     direct_send
